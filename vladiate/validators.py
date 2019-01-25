@@ -118,6 +118,29 @@ class UniqueValidator(Validator):
         return self.duplicates
 
 
+class CompoundValidator(Validator):
+
+    def __init__(self, compound_keys=[], **kwargs):
+        super(CompoundValidator, self).__init__(**kwargs)
+        self.collisions = set()
+        self.compound_keys = compound_keys
+        self.compound_values = {}
+
+    def validate(self, field, row):
+        compound_with = tuple([row[k] for k in self.compound_keys])
+        if field not in self.compound_values:
+            self.compound_values[field] = compound_with
+        else:
+            if sorted(compound_with) != sorted(self.compound_values[field]):
+                self.collisions.add(field)
+                raise ValidationException(
+                    "'{}' is mapped to multiple different values".format(field))
+
+    @property
+    def bad(self):
+        return self.collisions
+
+
 class RegexValidator(Validator):
     """ Validates that a field matches a given regex """
 
@@ -192,7 +215,7 @@ class NotEmptyValidator(Validator):
     def validate(self, field, row={}):
         if field == "":
             self.failed = True
-            raise ValidationException("Row has emtpy field in column")
+            raise ValidationException("Row has empty field in column")
 
     @property
     def bad(self):
