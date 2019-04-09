@@ -118,10 +118,10 @@ class UniqueValidator(Validator):
         return self.duplicates
 
 
-class CollisionValidator(Validator):
+class UniqueTogetherValidator(Validator):
     """ Validates that a column (or compound of columns) point to distinct values """
     def __init__(self, compound_keys=None, **kwargs):
-        super(CollisionValidator, self).__init__(**kwargs)
+        super(UniqueTogetherValidator, self).__init__(**kwargs)
         self.collisions = set()
         self.compound_keys = compound_keys or []
         self.compound_values = {}
