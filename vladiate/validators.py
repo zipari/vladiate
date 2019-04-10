@@ -119,19 +119,40 @@ class UniqueValidator(Validator):
 
 
 class UniqueTogetherValidator(Validator):
-    """ Validates that a column (or compound of columns) point to distinct values """
-    def __init__(self, compound_keys=None, **kwargs):
+    """ Validates that a column (or compound set of columns) have distinct values.
+
+    e.g::
+
+        {"id": [UniqueTogetherValidator(unique_with_fields=["first_name", "last_name"])}
+
+        Will raise a ValidationException while validating the following dictionaries:
+
+        [{"id": 123, "first_name": "John", "last_name": "Davies"},
+        {"id": 123, "first_name": "Bernice", "last_name": "Baseball"}]
+
+    """
+    def __init__(self, unique_with_fields=None, **kwargs):
+        """
+        :param unique_with_fields: list of fields to be considered in the uniqueness check.
+        :param kwargs: dictionary of key word arguments.
+        """
         super(UniqueTogetherValidator, self).__init__(**kwargs)
         self.collisions = set()
-        self.compound_keys = compound_keys or []
-        self.compound_values = {}
+        self.unique_with_fields = unique_with_fields or []
+        self.unique_keys_to_values = {}
 
     def validate(self, field, row):
-        compound_with = tuple([row[k] for k in self.compound_keys])
-        if field not in self.compound_values:
-            self.compound_values[field] = compound_with
+        """
+        Performs validation on the CSV RowDict.
+        :param field: The field to validate.
+        :param row: CSV RowDict.
+        :raises ValidationException: if field(s) point to two different values.
+        """
+        unique_values = tuple([row[k] for k in self.unique_with_fields])
+        if field not in self.unique_keys_to_values:
+            self.unique_keys_to_values[field] = unique_values
         else:
-            if sorted(compound_with) != sorted(self.compound_values[field]):
+            if sorted(unique_values) != sorted(self.unique_keys_to_values[field]):
                 self.collisions.add(field)
                 raise ValidationException(
                     "'{}' is mapped to multiple different values".format(field))
