@@ -118,6 +118,58 @@ class UniqueValidator(Validator):
         return self.duplicates
 
 
+class KeyCollisionValidator(Validator):
+    """ Validates that a column (or compound set of columns) have distinct values.
+
+    e.g::
+
+        {"id": [UniqueTogetherValidator(unique_with_fields=["first_name", "last_name"])}
+
+        Will raise a ValidationException while validating the following dictionaries:
+
+        [{"id": 123, "first_name": "John", "last_name": "Davies"},
+        {"id": 123, "first_name": "Bernice", "last_name": "Baseball"}]
+
+        Because there are multiple values contained in the first_name
+        and last_name columns for the id field.
+
+        Validation will pass for the following dictionaries:
+
+        [{"id": 123, "first_name": "John", "last_name": "Davies", "position": "Forward"},
+        {"id": 123, "first_name": "John", "last_name": "Davies", "position": "Center"}]
+
+    """
+    def __init__(self, unique_with_fields=None, **kwargs):
+        """
+        :param unique_with_fields: list of fields to be considered in the uniqueness check.
+        :param kwargs: dictionary of key word arguments.
+        """
+        super(KeyCollisionValidator, self).__init__(**kwargs)
+        self.collisions = set()
+        self.unique_with_fields = unique_with_fields or []
+        self.keys_to_unique_values = {}
+
+    def validate(self, field, row):
+        """
+        Performs validation on the CSV RowDict.
+        :param field: The field to validate.
+        :param row: CSV RowDict.
+        :raises ValidationException: if field(s) point to two different values.
+        """
+        unique_values = tuple([row[k] for k in self.unique_with_fields])
+        if field not in self.keys_to_unique_values:
+            self.keys_to_unique_values[field] = unique_values
+        else:
+            if sorted(unique_values) != sorted(self.keys_to_unique_values[field]):
+                self.collisions.add(field)
+                raise ValidationException(
+                    "'{}' is mapped to multiple different values".format(field))
+
+    @property
+    def bad(self):
+        return self.collisions
+
+
 class RegexValidator(Validator):
     """ Validates that a field matches a given regex """
 
